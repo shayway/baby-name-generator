@@ -8,8 +8,9 @@ This application generates random baby names from historical U.S. Social Securit
 ### Features:
 
 *   **Gender Selection**: Generate names for a specific gender (M/F).
-*   **Name Generation**: Press Enter for a new random name.
-*   **Like Names**: Save favorite names by pressing 'L'.
+*   **Batch Name Generation**: Generate names in batches of 20.
+*   **Navigate Batches**: Use 'N' for the next batch and 'B' for the previous batch.
+*   **Like Names**: Select multiple names from a batch by entering their corresponding numbers (e.g., '1 3 5').
 *   **Change Gender**: Type 'c' to switch gender.
 *   **Liked Names Summary**: View a list of liked names, their total occurrences, and most popular years upon quitting.
 *   **Easy Exit**: Type 'q' to quit at any time.
@@ -20,4 +21,4 @@ This application generates random baby names from historical U.S. Social Securit
 2.  **Install**: Run `pip3 install -r requirements.txt`.
 3.  **Run**: Execute `python3 baby_name_generator.py`.
 
-**Interaction:** Follow prompts. Enter/L/c/q for actions.
+**Interaction:** Follow prompts. Enter numbers to like names (e.g., '1 3 5'), 'N' for next batch, 'B' for back, 'c' to change gender, or 'q' to quit.
