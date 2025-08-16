@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 import random
@@ -10,7 +9,7 @@ def load_baby_names(data_folder):
     name_occurrences = {} # {(name, gender): {year: count}}
     all_files = [f for f in os.listdir(data_folder) if f.endswith('.txt')]
     all_files.sort() # Ensure consistent order for taking the first 10
-    files_to_process = all_files[:25] # Take only the first 25 files
+    files_to_process = all_files # Process all files
     for filename in tqdm(files_to_process, desc="Loading baby names"):
         file_path = os.path.join(data_folder, filename)
         year = int(filename[3:7]) # Extract year from filename (e.g., 'yob1880.txt' -> 1880)
@@ -30,10 +29,13 @@ def load_baby_names(data_folder):
 
     return names_by_gender, name_occurrences
 
-def generate_random_name(names_by_gender, gender):
+def generate_random_names_batch(names_by_gender, gender, batch_size=20):
     if gender not in names_by_gender or not names_by_gender[gender]:
-        return f"No names loaded for gender '{gender}'. Please check your data folder or gender input."
-    return random.choice(names_by_gender[gender])
+        return []
+    available_names = names_by_gender[gender]
+    if len(available_names) < batch_size:
+        return random.sample(available_names, len(available_names)) # Return all if less than batch_size
+    return random.sample(available_names, batch_size)
 
 if __name__ == "__main__":
     data_folder = 'data'
@@ -51,15 +53,14 @@ if __name__ == "__main__":
         else:
             liked_names = set() # Change to a set for unique names
             current_gender = None
-            last_generated_name = None # Initialize last_generated_name
+            batch_history = [] # Stores lists of names (batches) generated
+            current_batch_idx = -1 # Index of the current batch in batch_history (-1 means no batch loaded)
+            
             while True:
                 if current_gender is None:
                     user_input = input("\nEnter gender (M/F) or 'q' to quit: ").strip().upper()
                 else:
-                    like_option_text = ""
-                    if last_generated_name and (last_generated_name, current_gender) not in liked_names:
-                        like_option_text = f"'L' to like {last_generated_name}, "
-                    user_input = input(f"Current gender: {current_gender}. Press Enter for new name, {like_option_text}'c' to change gender, 'q' to quit: \n").strip().upper()
+                    user_input = input(f"Current gender: {current_gender}. Select names to like (e.g., 1 3 5), 'N' for next, 'B' for back, 'C' to change gender, 'Q' to quit: \n").strip().upper()
 
                 if user_input == 'Q':
                     break
@@ -67,39 +68,74 @@ if __name__ == "__main__":
                 if current_gender is None: # Only if no gender selected yet
                     if user_input in ['M', 'F']:
                         current_gender = user_input
-                        selected_names = baby_names_by_gender[current_gender]
-                        if not selected_names:
+                        # Initial batch generation when gender is selected
+                        current_batch = generate_random_names_batch(baby_names_by_gender, current_gender)
+                        if current_batch:
+                            batch_history.append(current_batch)
+                            current_batch_idx = 0
+                            print(f"Names loaded for {current_gender}!")
+                            # Display the first batch immediately
+                            for i, name in enumerate(batch_history[current_batch_idx]):
+                                print(f"{i+1}. {name}")
+                            print("\nSelect names to like (e.g., 1 3 5), 'N' for next, 'B' for back, 'C' to change gender, 'Q' to quit: ")
+                        else:
                             print(f"No names found for gender '{current_gender}'. Please try another gender or check your data.")
                             current_gender = None # Reset gender if no names
                     else:
                         print("Invalid gender input. Please enter 'M' for Male, 'F' for Female, or 'q' to quit.")
                 else: # Gender is already selected
+                    # Handle commands for batch navigation and liking
                     if user_input == 'C': # Change gender
                         current_gender = None
-                    elif user_input == 'L': # Like the last generated name
-                        if last_generated_name:
-                            name_gender_tuple = (last_generated_name, current_gender)
-                            if name_gender_tuple not in liked_names:
-                                liked_names.add(name_gender_tuple)
-                                print(f"{last_generated_name} added to your liked names.\n")
-                            else:
-                                print(f"{last_generated_name} is already in your liked names.\n")
+                        batch_history = [] # Clear history on gender change
+                        current_batch_idx = -1
+                    elif user_input == 'N': # Next batch
+                        if current_batch_idx < len(batch_history) - 1:
+                            current_batch_idx += 1
                         else:
-                            print("No name generated yet to like.")
-                    elif user_input == '': # Generate name on Enter
-                        random_name = generate_random_name(baby_names_by_gender, current_gender)
-                        print(f"Random Baby Name: {random_name}\n")
-                        last_generated_name = random_name # Update last_generated_name
-                    else:
-                        print("Invalid input. Press Enter for new name, 'L' to like, 'c' to change gender, or 'q' to quit.")
+                            # Generate new batch if at the end of history
+                            new_batch = generate_random_names_batch(baby_names_by_gender, current_gender)
+                            if new_batch:
+                                batch_history.append(new_batch)
+                                current_batch_idx = len(batch_history) - 1
+                            else:
+                                print("No more new names to generate for this gender.")
+                        
+                        if 0 <= current_batch_idx < len(batch_history):
+                            print(f"\nDisplaying batch {current_batch_idx + 1}/{len(batch_history)}:")
+                            for i, name in enumerate(batch_history[current_batch_idx]):
+                                print(f"{i+1}. {name}")
+                            print("\nSelect names to like (e.g., 1 3 5), 'N' for next, 'B' for back, 'C' to change gender, 'Q' to quit: ")
+                    elif user_input == 'B': # Previous batch
+                        if current_batch_idx > 0:
+                            current_batch_idx -= 1
+                            print(f"\nDisplaying batch {current_batch_idx + 1}/{len(batch_history)}:")
+                            for i, name in enumerate(batch_history[current_batch_idx]):
+                                print(f"{i+1}. {name}")
+                            print("\nSelect names to like (e.g., 1 3 5), 'N' for next, 'B' for back, 'C' to change gender, 'Q' to quit: ")
+                        else:
+                            print("Already at the first batch.\n")
+                    else: # Try to parse as liked names or invalid input
+                        try:
+                            liked_indices = [int(x) - 1 for x in user_input.split() if x.isdigit()]
+                            current_batch = batch_history[current_batch_idx]
+                            for idx in liked_indices:
+                                if 0 <= idx < len(current_batch):
+                                    name_to_like = current_batch[idx]
+                                    name_gender_tuple = (name_to_like, current_gender)
+                                    if name_gender_tuple not in liked_names:
+                                        liked_names.add(name_gender_tuple)
+                                        print(f"{name_to_like} added to your liked names.\n")
+                                    else:
+                                        print(f"{name_to_like} is already in your liked names.\n")
+                                else:
+                                    print(f"Invalid number: {idx+1}. Please enter valid numbers from the list.\n")
+                        except ValueError:
+                            print("Invalid input. Please enter numbers to like names, 'N' for next, 'B' for back, 'C' to change gender, or 'Q' to quit.\n")
 
     print("\nThank you for using the Baby Name Generator!")
     if liked_names:
         print("\n--- Your Liked Names ---")
-        
-        # Determine max widths for columns for better alignment
-        # max_name_len = max(len(name) for name, _ in liked_names) if liked_names else 0
-        # max_occ_len = max(len(str(sum(name_occurrences.get((name, gender), {}).values()))) for name, gender in liked_names) if liked_names else 0
         
         # Define header strings
         header_name = "Name"
@@ -107,9 +143,13 @@ if __name__ == "__main__":
         header_occurrences = "Occurrences"
         header_years = "Years"
 
+        # Dynamically calculate max_name_len and max_occ_len for printing liked names
+        max_name_len = max(len(name) for name, _ in liked_names) if liked_names else 0
+        max_occ_len = max(len(str(sum(name_occurrences.get((name, gender), {}).values()))) for name, gender in liked_names) if liked_names else 0
+
         # Print header
-        # print(f'{header_name:<{max_name_len}}  {header_gender:<6}  {header_occurrences:<{max_occ_len}}  {header_years}')
-        # print("-" * max_name_len + "  " + "-" * 6 + "  " + "-" * max_occ_len + "  " + "-" * 5)
+        print(f'{header_name:<{max_name_len}}  {header_gender:<6}  {header_occurrences:<{max_occ_len}}  {header_years}')
+        print("-" * max_name_len + "  " + "-" * 6 + "  " + "-" * max_occ_len + "  " + "-" * 20)
 
         for name, gender in sorted(list(liked_names)): # Convert back to list for sorting and printing
             # Calculate total occurrences by summing yearly data
